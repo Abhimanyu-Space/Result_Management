@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #results-container { margin-top: 20px; }
+        #cpi-display { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Welcome Student</h2>
+    <p>Your results are shown below:</p>
+
+    <div id="results-container">
+        <p>Loading results...</p>
+    </div>
+    <div id="cpi-display"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/student/dashboard') // This endpoint returns JSON
+                .then(response => {
+                    if (!response.ok) {
+                        // Try to read response body as text for more error details
+                        return response.text().then(text => {
+                             throw new Error(`HTTP error! status: ${response.status}, message: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const resultsContainer = document.getElementById('results-container');
+                    const cpiDisplay = document.getElementById('cpi-display');
+                    resultsContainer.innerHTML = ''; // Clear loading message
+
+                    if (data && data.grades && data.grades.length > 0) {
+                        const table = document.createElement('table');
+                        const thead = document.createElement('thead');
+                        const tbody = document.createElement('tbody');
+
+                        // Create table header
+                        thead.innerHTML = `
+                            <tr>
+                                <th>Course Name</th>
+                                <th>Letter Grade</th>
+                                <th>Grade Point</th>
+                            </tr>
+                        `;
+                        table.appendChild(thead);
+
+                        // Populate table body
+                        data.grades.forEach(grade => {
+                            const row = tbody.insertRow();
+                            // Use || 'N/A' for safety in case properties are missing/null
+                            row.innerHTML = `
+                                <td>${grade.course_name || 'N/A'}</td>
+                                <td>${grade.letter_grade || 'N/A'}</td>
+                                <td>${grade.grade_point !== null && grade.grade_point !== undefined ? grade.grade_point : 'N/A'}</td>
+                            `;
+                        });
+                        table.appendChild(tbody);
+                        resultsContainer.appendChild(table);
+
+                        // Display CPI - Check if data.cpi exists and is a number
+                        if (data.cpi !== undefined && !isNaN(data.cpi)) {
+                            cpiDisplay.textContent = `Your Calculated CPI: ${data.cpi}`;
+                        } else {
+                             // Provide a default or clearer message if CPI is missing/invalid
+                             cpiDisplay.textContent = data.cpi === undefined ? 'CPI calculation unavailable.' : 'CPI data invalid.';
+                        }
+
+                    } else {
+                        // Handle cases where grades array might be empty or missing
+                        resultsContainer.innerHTML = '<p>No results found for your account.</p>';
+                         cpiDisplay.textContent = ''; // Clear CPI if no results
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching or processing results:', error);
+                    const resultsContainer = document.getElementById('results-container');
+                    // Display a user-friendly error message
+                    resultsContainer.innerHTML = `<p>Could not load results. Error: ${error.message}. Please try again later.</p>`;
+                     const cpiDisplay = document.getElementById('cpi-display');
+                     cpiDisplay.textContent = ''; // Clear CPI on error
+                });
+        });
+    </script>
+</body>
+</html>
